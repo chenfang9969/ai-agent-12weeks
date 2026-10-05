@@ -137,6 +137,60 @@ def show_week(d: dict):
     print(cands[0].read_text(encoding="utf-8"))
 
 
+TEMPLATE_SIZE = 417      # 打卡脚本生成的纯模板正文长度
+
+# 记录里必须回答的四个反思题（对应原计划的"每天 30 分钟记录"）
+REFLECT_KEYS = ["【1】", "【2】", "【3】", "【4】"]
+ANSWER_OPEN = "===== 你的答案 ====="
+ANSWER_CLOSE = "===== 结束 ====="
+
+
+def _answer_chars(seg: str) -> int:
+    """只统计 "===== 你的答案 =====" 与 "===== 结束 =====" 之间的内容。
+
+    为什么用标记而不是猜：**提示和答案混在同一个文件里时，任何启发式都会误判。**
+    实测教训：先按"行首是否'提示：'"过滤 → 仍把示范文和提示正文算成答案；
+    再按字数阈值 → 45 字和 200 字的提示都过不了关但会被算进某些题。
+    让写的人明确划出答案区，是最可靠也最省事的办法。
+    """
+    total = 0
+    in_answer = False
+    for line in seg.splitlines():
+        s = line.strip()
+        if s.startswith(ANSWER_OPEN):
+            in_answer = True
+            continue
+        if s.startswith(ANSWER_CLOSE):
+            in_answer = False
+            continue
+        if in_answer and s:
+            total += len(s)
+    return total
+
+
+def reflect_answers(path: Path) -> list[tuple[str, int]]:
+    """检查四个反思题各写了多少字实质内容（排除提示行）。
+
+    为什么必须这么查：**文件存在 ≠ 你写了。**
+    打卡脚本会生成模板，字节数也够长，光看长度会给出虚假的安心。
+    """
+    if not path.exists():
+        return [(k, 0) for k in REFLECT_KEYS]
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    out: list[tuple[str, int]] = []
+    for i, key in enumerate(REFLECT_KEYS):
+        start = text.find(key)
+        if start < 0:
+            out.append((key, 0))
+            continue
+        end = text.find(REFLECT_KEYS[i + 1], start) if i + 1 < len(REFLECT_KEYS) else len(text)
+        out.append((key, _answer_chars(text[start:end])))
+    return out
+
+
+ANSWER_MIN_CHARS = 20    # 单题实质作答至少这么多字，否则算没答
+
+
 def check(d: dict):
     wi = week_index()
     code, title, deliverable = WEEKS[wi - 1]
@@ -154,23 +208,37 @@ def check(d: dict):
         print("  [!] 每日记录目录都不存在 —— 今天是第 1 天，正常。")
         return
     wk_start = START + timedelta(days=(wi - 1) * 7)
-    missing = []
+    missing, thin = [], []
     for i in range(7):
         day = wk_start + timedelta(days=i)
         if day > date.today():
             break
-        if not (DAILY / f"{day:%Y-%m-%d}.txt").exists():
-            missing.append(f"{day:%m-%d}({'一二三四五六日'[day.weekday()]})")
+        p = DAILY / f"{day:%Y-%m-%d}.txt"
+        tag = f"{day:%m-%d}({'一二三四五六日'[day.weekday()]})"
+        if not p.exists():
+            missing.append(tag)
+            continue
+        answered = sum(1 for _, c in reflect_answers(p) if c >= ANSWER_MIN_CHARS)
+        if answered < 4:
+            thin.append(f"{tag} 只答了 {answered}/4 题")
+
+    # ★ 关键：文件存在 ≠ 你写了。没答四个反思题就等于没记录。
     if missing:
-        print(f"  [欠] 缺记录的日期: {', '.join(missing)}")
-    else:
-        print("  [OK] 本周记录一天没缺。")
+        print(f"  [欠] 完全没有记录的日期: {', '.join(missing)}")
+    if thin:
+        print(f"  [半成品] 记录存在但反思题没答完的:")
+        for t in thin:
+            print(f"           - {t}")
+        print("           → 存在 ≠ 写了。这四个问题是这 30 分钟的全部价值。")
+    if not missing and not thin:
+        print("  [OK] 本周记录齐全，且四个反思题都答了。")
 
     print()
-    print("  本周最后一天（周日 21:00）必须回答：")
+    print("  每周最后一天（周日 21:00）必须回答：")
     print("   1. 本周新增能力？")
-    print("   2. 产生什么资产？")
+    print("   2. 产生什么资产？（文件/代码/文档/视频/联系人 —— 没有资产=这周白过）")
     print("   3. 距离赚钱更近了吗？")
+    print(f"   记录到: 周复盘\\{code}-复盘.md")
 
 
 def show_log(d: dict):
@@ -185,20 +253,26 @@ def show_log(d: dict):
         p = DAILY / f"{day:%Y-%m-%d}.txt"
         if p.exists():
             n = len(p.read_text(encoding="utf-8").strip())
-            print(f"  [x] {day:%m-%d}  {n} 字")
+            ans = sum(1 for _, c in reflect_answers(p) if c >= ANSWER_MIN_CHARS)
+            note = "" if ans == 4 else f"  <- 反思题只答 {ans}/4"
+            print(f"  [x] {day:%m-%d}  {n} 字{note}")
         else:
             tag = "  <- 今天，还没写" if day == today else ""
             print(f"  [ ] {day:%m-%d}  未记录{tag}")
     print()
-    missing = sum(
-        1 for i in range(10)
-        if (today - timedelta(days=i)) >= START
-        and not (DAILY / f"{(today - timedelta(days=i)):%Y-%m-%d}.txt").exists()
-    )
-    if missing >= 3:
-        print(f"  [!!] 最近 10 天缺 {missing} 天。纪律涣散，立即恢复节奏。")
+    # 空壳也算欠账：文件存在不代表写了
+    bad = []
+    for i in range(10):
+        day = today - timedelta(days=i)
+        if day < START:
+            continue
+        p = DAILY / f"{day:%Y-%m-%d}.txt"
+        if not p.exists() or sum(1 for _, c in reflect_answers(p) if c >= ANSWER_MIN_CHARS) < 4:
+            bad.append(day)
+    if len(bad) >= 3:
+        print(f"  [!!] 最近 10 天有 {len(bad)} 天没有完整记录。纪律涣散，立即恢复节奏。")
     else:
-        print("  [OK] 节奏保持中。")
+        print(f"  [OK] 节奏保持中（最近 10 天完整记录 {10 - len(bad)} 天）。")
 
 
 def do_checkin():
@@ -216,16 +290,19 @@ def do_checkin():
         n = len(p.read_text(encoding="utf-8"))
         print(f"   当前 {n} 字。把它填完整再回来。")
     else:
+        BLOCK = "===== 你的答案 =====\n\n===== 结束 =====\n"
         p.write_text(
             f"日期：{today:%Y-%m-%d}（星期{'一二三四五六日'[today.weekday()]}）· "
             f"{code} Day {day_no}\n"
             f"当天任务卡：{title}（见 12周总任务卡）\n"
             "实际投入技术时间：____ 分钟\n\n"
+            "规则：把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。\n"
+            "      写在标记外的不算（我也检测不到）。\n\n"
             "--------------------------------------------------\n"
-            "【1】今天理解了什么？\n\n\n"
-            "【2】今天解决了什么问题？\n\n\n"
-            "【3】这个技术有什么商业价值？\n\n\n"
-            "【4】有没有客户场景？是谁？他会为什么付钱？\n\n\n"
+            "【1】今天理解了什么？\n" + BLOCK + "\n"
+            "【2】今天解决了什么问题？\n" + BLOCK + "\n"
+            "【3】这个技术有什么商业价值？\n" + BLOCK + "\n"
+            "【4】有没有客户场景？是谁？他会为什么付钱？\n" + BLOCK + "\n"
             "--------------------------------------------------\n"
             "【明日第一件事】\n\n"
             "【今日状态】1-10 分：\n"
@@ -233,7 +310,8 @@ def do_checkin():
             encoding="utf-8",
         )
         print(f"[新建] {p}")
-        print("   写完了记得回顾一遍：四个问题是不是都答了？")
+        print("   把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。")
+        print("   写完跑一次:  python progress.py --check   （会告诉你答了几题）")
 
     d = load()
     entry = f"{today:%Y-%m-%d}"
