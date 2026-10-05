@@ -24,6 +24,15 @@ KEY_VARS = [
 ]
 
 
+def is_placeholder(v: str) -> bool:
+    """识别占位符 / 明显无效的 Key，避免误报“已配置”。"""
+    if not v:
+        return True
+    bad = ("在这里", "你的", "your", "xxxx", "paste", "粘贴", "sk-xxx")
+    low = v.lower()
+    return any(b in low for b in bad) or len(v) < 20
+
+
 def hr(t):
     print("\n" + "=" * 56)
     print(t)
@@ -50,7 +59,7 @@ def main():
             print(f"[MISS] {m}   ->  pip install {m}")
             ok = False
 
-    hr("3. LLM API Key")
+    hr("3. 模型配置（三选一：云端 Key / 免费额度 / 本地模型）")
     # 先尝试从 .env 读取（放在项目目录或 12周计划 根目录都行）
     try:
         from pathlib import Path
@@ -66,20 +75,33 @@ def main():
         pass
 
     found = []
+    placeholders = []
     for var, base, model in KEY_VARS:
         v = os.getenv(var)
-        if v:
+        if not v:
+            print(f"[--]   {var} 未设置")
+        elif is_placeholder(v):
+            print(f"[占位] {var} 还是占位符，必须换成真实 Key（当前值: {v}）")
+            placeholders.append(var)
+        else:
             print(f"[OK]   {var} = {v[:6]}...{v[-4:]}  ({len(v)} 字符)")
             found.append((var, base, model))
-        else:
-            print(f"[--]   {var} 未设置")
+
+    local = os.getenv("DSH_LOCAL_BASE_URL")
+    if local:
+        print(f"[OK]   本地模型 {local}  模型={os.getenv('DSH_LOCAL_MODEL', 'qwen2.5:7b')}")
+        found.append(("DSH_LOCAL_BASE_URL", local, os.getenv("DSH_LOCAL_MODEL", "qwen2.5:7b")))
+
     if not found:
-        print("\n[!] 一个 key 都没有。选一个：")
-        print('    $env:DEEPSEEK_API_KEY="sk-xxxx"          # 临时，当前窗口有效')
-        print('    [Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY","sk-xxxx","User")   # 永久')
-        print("    申请: https://platform.deepseek.com/api_keys")
+        print("\n[!] 没有配置任何模型。三条路选一条：")
+        print('  A 云端(推荐): $env:DEEPSEEK_API_KEY="sk-xxxx"       https://platform.deepseek.com/api_keys')
+        print('  B 免费额度  : 智谱 glm-4-flash 免费                  https://open.bigmodel.cn/')
+        print('                阿里通义 新用户免费额度                https://bailian.console.aliyun.com/')
+        print('  C 本地模型  : $env:DSH_LOCAL_BASE_URL="http://127.0.0.1:11434/v1"')
+        print("                本机 Intel 核显 + 16G 内存，会很慢，仅作备选")
+        print("  配一次长期有效：把 .env.example 复制成 .env 并填入")
     else:
-        print(f"\n[OK] 共 {len(found)} 个可用 key，将优先使用 {found[0][0]}")
+        print(f"\n[OK] 共 {len(found)} 个可用来源，将优先使用 {found[0][0]}")
 
     hr("4. 联网能力（搜索抓取靠它）")
     try:
@@ -93,9 +115,23 @@ def main():
         print("    tools.py 的 web_search 会失效。可换必应/自建搜索，或先只用 web_fetch。")
 
     hr("5. 结论")
-    print("[OK] 环境就绪，去跑:  python 项目\\ai-research-agent\\hello_llm.py" if ok
-          else "[!] 先把上面标 [MISS] 的补上，再继续。")
-    return 0 if ok else 1
+    if not ok:
+        print("[X] 依赖没装齐，先补上面标 [MISS] 的，再继续。")
+        return 1
+    if found:
+        print(f"[OK] 全部就绪，模型来源: {found[0][0]}")
+        print("     去跑:  python 项目\\ai-research-agent\\hello_llm.py")
+        return 0
+    # 依赖齐了但没模型：这是"差一步"，不能说成就绪
+    print("[!] 还差最后一步：没有可用的模型来源。")
+    if placeholders:
+        print(f"    检测到占位符: {', '.join(placeholders)}")
+        print("    打开 D:\\DeepSeekHarness\\12周计划\\.env ，把 sk-在这里粘贴你的真实Key")
+        print("    替换成你的真实 Key，保存后再跑一次本脚本。")
+    else:
+        print("    打开 .env 填入 Key，或按上面 A/B/C 三条路任选一条。")
+    print("    其余一切（代码/项目/工具/进度体系）都已就绪。")
+    return 1
 
 
 if __name__ == "__main__":

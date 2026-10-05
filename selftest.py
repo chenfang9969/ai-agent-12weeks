@@ -50,7 +50,7 @@ def has_key() -> bool:
     import os
     return any(os.getenv(v) for v in
                ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "DASHSCOPE_API_KEY",
-                "MOONSHOT_API_KEY", "ZHIPUAI_API_KEY"))
+                "MOONSHOT_API_KEY", "ZHIPUAI_API_KEY", "DSH_LOCAL_BASE_URL"))
 
 
 def main():

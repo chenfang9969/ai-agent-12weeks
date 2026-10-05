@@ -42,7 +42,23 @@ PROVIDERS = [
     ("MOONSHOT_API_KEY", "https://api.moonshot.cn/v1", "moonshot-v1-8k", 12.0, 12.0),
     ("ZHIPUAI_API_KEY", "https://open.bigmodel.cn/api/paas/v4", "glm-4-flash", 0.0, 0.0),
     ("OPENAI_API_KEY", "https://api.openai.com/v1", "gpt-4o-mini", 1.1, 4.3),
+    # 本地模型：零成本、零注册、数据不出机器。
+    # 用法（以 Ollama 为例）:
+    #   1) 装 Ollama: https://ollama.com/download
+    #   2) ollama pull qwen2.5:7b
+    #   3) $env:DSH_LOCAL_BASE_URL="http://127.0.0.1:11434/v1"
+    #      $env:DSH_LOCAL_MODEL="qwen2.5:7b"
+    # 也适用于 LM Studio / vLLM / llama.cpp server（都是 OpenAI 兼容接口）。
+    #
+    # ⚠️ 本机为 Intel 核显 + 16G 内存，跑本地模型会很慢（每秒几个 token），
+    #    不建议作为主力。但代码路径已就绪，换机器或装了 Ollama 即可直接用。
+    ("DSH_LOCAL_BASE_URL", "", "", 0.0, 0.0),
 ]
+
+# 本地供应商的环境变量名不是 API Key，而是 base_url，需要特殊处理
+LOCAL_BASE_VAR = "DSH_LOCAL_BASE_URL"
+LOCAL_MODEL_VAR = "DSH_LOCAL_MODEL"
+LOCAL_DEFAULT_MODEL = "qwen2.5:7b"
 
 
 @dataclass
@@ -72,16 +88,35 @@ class LLMError(RuntimeError):
 
 
 def pick_provider(model: str | None = None) -> Provider:
-    """自动挑一个已配置 key 的供应商。"""
+    """自动挑一个已配置的供应商。云端优先（更快更聪明），本地作为零成本兜底。"""
+    # 1) 云端 API
     for var, base, m, pin, pout in PROVIDERS:
+        if var == LOCAL_BASE_VAR:
+            continue
         key = os.getenv(var)
         if key:
             return Provider(var, base, model or m, key, pin, pout)
+
+    # 2) 本地模型（Ollama / LM Studio / vLLM，OpenAI 兼容接口）
+    base = os.getenv(LOCAL_BASE_VAR)
+    if base:
+        return Provider(LOCAL_BASE_VAR, base, model or os.getenv(LOCAL_MODEL_VAR, LOCAL_DEFAULT_MODEL),
+                        "no-key-needed", 0.0, 0.0)
+
     raise LLMError(
-        "没有找到任何 API Key。先设置一个：\n"
-        '  $env:DEEPSEEK_API_KEY="sk-xxxx"        # 临时\n'
-        '  [Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY","sk-xxxx","User")  # 永久\n'
-        "  申请地址: https://platform.deepseek.com/api_keys"
+        "没有找到任何可用的模型。三选一：\n\n"
+        "  【A】云端 API（推荐，最省事）\n"
+        '    $env:DEEPSEEK_API_KEY="sk-xxxx"\n'
+        "    申请: https://platform.deepseek.com/api_keys\n\n"
+        "  【B】免费额度（零成本起步）\n"
+        "    智谱 GLM: glm-4-flash 免费  https://open.bigmodel.cn/\n"
+        "    阿里通义: 新用户免费额度    https://bailian.console.aliyun.com/\n\n"
+        "  【C】本地模型（零成本、零注册、数据不出机器，但对硬件有要求）\n"
+        "    本机是 Intel 核显 + 16G 内存，跑 7B 模型约每秒几个 token，会很慢。\n"
+        "    若仍要试: 装 Ollama -> ollama pull qwen2.5:7b -> 然后设置:\n"
+        '      $env:DSH_LOCAL_BASE_URL="http://127.0.0.1:11434/v1"\n'
+        '      $env:DSH_LOCAL_MODEL="qwen2.5:7b"\n'
+        "    也可以把 .env.example 改成 .env 后填入，配一次长期有效。"
     )
 
 
