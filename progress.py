@@ -260,19 +260,26 @@ def show_log(d: dict):
             tag = "  <- 今天，还没写" if day == today else ""
             print(f"  [ ] {day:%m-%d}  未记录{tag}")
     print()
-    # 空壳也算欠账：文件存在不代表写了
-    bad = []
+    # 空壳也算欠账：文件存在不代表写了。
+    # 注意：只统计"计划已开始且已经过去"的天数 —— 把未来天数算成"完整记录"是错的。
+    bad, elapsed = [], 0
     for i in range(10):
         day = today - timedelta(days=i)
         if day < START:
-            continue
+            break
+        elapsed += 1
         p = DAILY / f"{day:%Y-%m-%d}.txt"
         if not p.exists() or sum(1 for _, c in reflect_answers(p) if c >= ANSWER_MIN_CHARS) < 4:
             bad.append(day)
-    if len(bad) >= 3:
-        print(f"  [!!] 最近 10 天有 {len(bad)} 天没有完整记录。纪律涣散，立即恢复节奏。")
+    if elapsed == 0:
+        print("  [i] 计划还没开始。")
+    elif len(bad) >= 3:
+        print(f"  [!!] 最近 {elapsed} 天里有 {len(bad)} 天没有完整记录。纪律涣散，立即恢复节奏。")
+    elif len(bad) == 0:
+        print(f"  [OK] 已开始的 {elapsed} 天全部有完整记录。保持住。")
     else:
-        print(f"  [OK] 节奏保持中（最近 10 天完整记录 {10 - len(bad)} 天）。")
+        print(f"  [!] 已开始的 {elapsed} 天里，{len(bad)} 天记录不完整："
+              + ", ".join(f"{d:%m-%d}" for d in bad))
 
 
 def do_checkin():
