@@ -46,7 +46,6 @@ DEFAULT = {
     "daily": {"tech_minutes_target": 60, "log_minutes_target": 30},
     "assets": {w[0]: {"deliverable": w[2], "done": False, "proof": ""} for w in WEEKS},
     "leads": [],
-    "log": [],
 }
 
 
@@ -66,12 +65,19 @@ def load() -> dict:
     for w in WEEKS:
         d["assets"].setdefault(w[0], {"deliverable": w[2], "done": False, "proof": ""})
     d.setdefault("leads", [])
-    d.setdefault("log", [])
+    d.pop("log", None)          # 早期遗留的死字段：从未被读取，已移除
     return d
 
 
 def save(d: dict):
-    DATA.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    """只在内容真的变了才写盘。
+
+    否则每次跑 progress.py 都会重写文件、制造无意义的 git 变动。
+    """
+    new = json.dumps(d, ensure_ascii=False, indent=2)
+    if DATA.exists() and DATA.read_text(encoding="utf-8-sig") == new:
+        return
+    DATA.write_text(new, encoding="utf-8")
 
 
 def bar(done: int, total: int, width: int = 24) -> str:
@@ -320,19 +326,18 @@ def do_checkin():
         print("   把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。")
         print("   写完跑一次:  python progress.py --check   （会告诉你答了几题）")
 
-    d = load()
-    entry = f"{today:%Y-%m-%d}"
-    if entry not in d["log"]:
-        d["log"].append(entry)
-        save(d)
-    d2 = load()
+    # 打卡后给出真实进度：答了几题，以及连续记录天数
+    answered = sum(1 for _, c in reflect_answers(p) if c >= ANSWER_MIN_CHARS)
+    print(f"\n   反思题进度: {answered}/4 题已作答"
+          + ("   全部完成，很好。" if answered == 4 else "   把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。"))
+
     logs = {q.stem for q in DAILY.glob("*.txt")}
     streak = 0
     cur = today
     while cur.strftime("%Y-%m-%d") in logs:
         streak += 1
         cur -= timedelta(days=1)
-    print(f"\n   连续记录: {streak} 天")
+    print(f"   连续记录: {streak} 天")
     return 0
 
 

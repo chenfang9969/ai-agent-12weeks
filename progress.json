@@ -12,61 +12,60 @@
       "proof": ""
     },
     "W02": {
-      "deliverable": "Research Agent v1.0（State/Node/Edge + 人工审核）",
+      "deliverable": "Research Agent v1.0（含人工审核节点）+ 状态图",
       "done": false,
       "proof": ""
     },
     "W03": {
-      "deliverable": "企业知识库 Agent Demo + 潜在企业名单",
+      "deliverable": "知识库 Demo + 20题评测(命中率/拒答率) + 企业名单≥10家",
       "done": false,
       "proof": ""
     },
     "W04": {
-      "deliverable": "Docker 私有化部署 + 知识库 + FastAPI 工具接口打通",
+      "deliverable": "私有化部署 + 知识库 + FastAPI 工具接口 + 自研vs Dify对照表",
       "done": false,
       "proof": ""
     },
     "W05": {
-      "deliverable": "企业微信/飞书/网页 三选一，端到端跑通",
+      "deliverable": "一个入口端到端跑通 + 60秒录屏 + 架构图",
       "done": false,
       "proof": ""
     },
     "W06": {
-      "deliverable": "完整 Demo：前端 + Agent + 知识库 + 后台",
+      "deliverable": "完整 Demo（前端+Agent+知识库+后台）+ 场景说明 + 操作手册",
       "done": false,
       "proof": ""
     },
     "W07": {
-      "deliverable": "展示页 + Demo 视频 + PPT + 方案说明",
+      "deliverable": "展示页 + 3分钟视频 + PPT + 解决方案文档 v1",
       "done": false,
       "proof": ""
     },
     "W08": {
-      "deliverable": "≥20 家触达，≥5 次真实对话，客户需求数据库",
+      "deliverable": "≥20家触达 + ≥5次真实对话 + 客户需求数据库",
       "done": false,
       "proof": ""
     },
     "W09": {
-      "deliverable": "从 A/B/C/D 砍到 1 个 + 决策依据",
+      "deliverable": "方向决策文档（含放弃理由）+ MVP 定义 + 3周计划",
       "done": false,
       "proof": ""
     },
     "W10": {
-      "deliverable": "1 个真实用户交付完成 + 反馈记录",
+      "deliverable": "1个真实交付 + 使用反馈 + 案例授权 + 1个转介绍",
       "done": false,
       "proof": ""
     },
     "W11": {
-      "deliverable": "交付 SOP 模板（需求→培训 6 步）",
+      "deliverable": "交付SOP六步 + 工时表 + 报价公式",
       "done": false,
       "proof": ""
     },
     "W12": {
-      "deliverable": "飞轮图 + 第二单线索 + 12 周总结",
+      "deliverable": "飞轮图 + 3篇内容 + 案例库索引 + 12周总结",
       "done": false,
       "proof": ""
     }
   },
-  "leads": [],
-  "log": []
+  "leads": []
 }
