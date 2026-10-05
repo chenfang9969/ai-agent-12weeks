@@ -87,59 +87,39 @@ def build_message(today: date) -> tuple[str, str, str]:
 
 
 def popup(title: str, message: str) -> bool:
-    """弹窗三级降级：BurntToast（桌面通知，计划任务也能显示）→ WinForms 气泡 → 提示音。
+    """调用 notify.ps1 弹桌面通知。
+
+    为什么拆成独立 .ps1 文件：把 PowerShell 代码用 Python 字符串拼出来太脆
+    （反斜杠转义、here-string、引号嵌套全是坑）。独立文件能单独调试、单独测试。
+
+    notify.ps1 内部是四级降级：WinRT Toast → BurntToast → WinForms 气泡 → 提示音。
 
     ⚠️ 重要技术真相：Windows 计划任务运行在会话 0，**它的控制台窗口用户看不见**。
-    所以对"定时提醒"来说，桌面通知（Toast）才是主路径，控制台只是兜底。
+    所以对"定时提醒"来说，桌面通知才是主路径，控制台只是记录。
     """
-    ps = (
-        "$ErrorActionPreference='SilentlyContinue';"
-        "Import-Module BurntToast -ErrorAction SilentlyContinue;"
-        "if(-not (Get-Module BurntToast)){"
-        "  try{"
-        "    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue;"
-        "    Install-Module BurntToast -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop;"
-        "    Import-Module BurntToast -ErrorAction Stop"
-        "  }catch{}"
-        "}"
-        "$t=$env:DSH_POPUP_TITLE; $m=$env:DSH_POPUP_MSG;"
-        "try{"
-        "  if(Get-Module BurntToast){"
-        "    New-BurntToastNotification -Text $t,$m | Out-Null;"
-        "    Write-Output 'burnttoast'"
-        "  } else { throw 'no burnttoast' }"
-        "}catch{"
-        "  try{"
-        "    Add-Type -AssemblyName System.Windows.Forms;"
-        "    Add-Type -AssemblyName System.Drawing;"
-        "    $n=New-Object System.Windows.Forms.NotifyIcon;"
-        "    $n.Icon=[System.Drawing.SystemIcons]::Information;"
-        "    $n.Visible=$true;"
-        "    $n.ShowBalloonTip(20000,$t,$m,[System.Windows.Forms.ToolTipIcon]::Info);"
-        "    Start-Sleep -Seconds 8; $n.Dispose();"
-        "    Write-Output 'balloon'"
-        "  }catch{"
-        "    [console]::beep(880,300); [console]::beep(660,300);"
-        "    Write-Output 'beep'"
-        "  }"
-        "}"
-    )
     import os
+
+    script = ROOT / "notify.ps1"
+    if not script.exists():
+        print(f"  [弹窗] 找不到 {script.name}，跳过")
+        return False
+
     env = dict(os.environ, DSH_POPUP_TITLE=title, DSH_POPUP_MSG=message)
+    labels = {"winrt-toast": "桌面 Toast(WinRT 原生)",
+              "burnttoast": "桌面通知(BurntToast)",
+              "balloon": "气泡通知(WinForms)",
+              "beep": "提示音(通知不可用)"}
     for exe in ("powershell.exe", "pwsh.exe"):
         try:
             r = subprocess.run(
-                [exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+                [exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
                 capture_output=True, text=True, timeout=120, env=env,
             )
-            out = (r.stdout or "").strip().splitlines()
+            out = [l.strip() for l in (r.stdout or "").splitlines() if l.strip()]
             tag = out[-1] if out else ""
-            if tag:
-                label = {"burnttoast": "桌面通知(BurntToast)",
-                         "balloon": "气泡通知(WinForms)",
-                         "beep": "提示音(通知不可用)"}.get(tag, tag)
-                print(f"  [弹窗] {label}")
-                return True
+            if tag in labels:
+                print(f"  [弹窗] {labels[tag]}")
+                return tag != "beep"
         except Exception:
             continue
     print("  [弹窗] 不可用（不影响控制台提醒）")
