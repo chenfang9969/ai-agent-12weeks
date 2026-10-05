@@ -53,7 +53,7 @@ results: list[tuple[str, str, str]] = []   # (状态, 项目, 说明)
 
 
 def rec(status: str, name: str, detail: str = ""):
-    icon = {"OK": "[OK]  ", "WARN": "[警告]", "FAIL": "[失败]", "SKIP": "[跳过]", "NEED": "[需Key]"}
+    icon = {"OK": "[OK]  ", "WARN": "[警告]", "FAIL": "[失败]", "SKIP": "[跳过]", "KEY": "[信息]"}
     print(f"  {icon.get(status, '?')} {name}" + (f"  -- {detail}" if detail else ""))
     results.append((status, name, detail))
 
@@ -101,9 +101,9 @@ def main():
     ok_search = '"ok": true' in out or "'ok': True" in out
     rec("OK" if ok_search else "WARN", "工具层联网搜索", "能抓到真实结果" if ok_search else "搜索失败（网络或被限流）")
     if has_key():
-        rec("NEED", "LLM 调用", "有 Key，可跑 hello_llm.py")
+        rec("KEY", "模型来源已配置", "可以跑需要 LLM 的脚本了")
     else:
-        rec("NEED", "LLM 调用", "缺 API Key —— 这是唯一真卡点")
+        rec("WARN", "模型来源未配置", "唯一的真正待办：填一个 API Key 到 .env")
 
     # ---------------- 3. W02 状态图 ----------------
     print("\n【3】W02 · 状态图引擎（免 Key 可全验）")
