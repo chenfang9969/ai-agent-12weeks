@@ -1,0 +1,72 @@
+{
+  "start_date": "2026-10-06",
+  "current_week": 1,
+  "daily": {
+    "tech_minutes_target": 60,
+    "log_minutes_target": 30
+  },
+  "assets": {
+    "W01": {
+      "deliverable": "AI商业研究助手 v0.1 能跑 + README + Agent 流程图",
+      "done": false,
+      "proof": ""
+    },
+    "W02": {
+      "deliverable": "Research Agent v1.0（State/Node/Edge + 人工审核）",
+      "done": false,
+      "proof": ""
+    },
+    "W03": {
+      "deliverable": "企业知识库 Agent Demo + 潜在企业名单",
+      "done": false,
+      "proof": ""
+    },
+    "W04": {
+      "deliverable": "Docker 私有化部署 + 知识库 + FastAPI 工具接口打通",
+      "done": false,
+      "proof": ""
+    },
+    "W05": {
+      "deliverable": "企业微信/飞书/网页 三选一，端到端跑通",
+      "done": false,
+      "proof": ""
+    },
+    "W06": {
+      "deliverable": "完整 Demo：前端 + Agent + 知识库 + 后台",
+      "done": false,
+      "proof": ""
+    },
+    "W07": {
+      "deliverable": "展示页 + Demo 视频 + PPT + 方案说明",
+      "done": false,
+      "proof": ""
+    },
+    "W08": {
+      "deliverable": "≥20 家触达，≥5 次真实对话，客户需求数据库",
+      "done": false,
+      "proof": ""
+    },
+    "W09": {
+      "deliverable": "从 A/B/C/D 砍到 1 个 + 决策依据",
+      "done": false,
+      "proof": ""
+    },
+    "W10": {
+      "deliverable": "1 个真实用户交付完成 + 反馈记录",
+      "done": false,
+      "proof": ""
+    },
+    "W11": {
+      "deliverable": "交付 SOP 模板（需求→培训 6 步）",
+      "done": false,
+      "proof": ""
+    },
+    "W12": {
+      "deliverable": "飞轮图 + 第二单线索 + 12 周总结",
+      "done": false,
+      "proof": ""
+    }
+  },
+  "leads": [],
+  "log": []
+}

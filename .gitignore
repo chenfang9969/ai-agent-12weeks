@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 密钥（绝不入库）
+.env
+.env.local
+
+# 运行时产物（报告、日志、索引都是可再生的）
+项目/*/output/*.md
+项目/*/output/*.json
+项目/knowledge-base/index.json
+
+# 但保留目录结构
+!项目/*/output/.gitkeep
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+~$*

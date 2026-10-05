@@ -1,0 +1,17 @@
+# 统一行尾：仓库里一律用 LF，工作区也检出 LF
+# 目的：消除 "LF will be replaced by CRLF" 噪音，让 git status 保持干净
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.zip binary
+
+# 注意：不要给 *.ps1 设置 working-tree-encoding。
+# remind.ps1 / setup-reminders.ps1 依赖 UTF-8 BOM（PS 5.1 无 BOM 会按 GBK 读成乱码），
+# 设了 working-tree-encoding 会让 git 忽略工作区 BOM，反而可能把 BOM 丢掉。
