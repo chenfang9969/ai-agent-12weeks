@@ -26,6 +26,29 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = Path(__file__).resolve().parent
 PROJ = ROOT / "项目"
 
+# 加载 .env（否则会把"已配好的 Key"误报成"缺 Key"）
+def _load_env():
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        # 没装 python-dotenv 就手工解析，保证判定准确
+        f = ROOT / ".env"
+        if not f.exists():
+            return
+        import os as _os
+        for line in f.read_text(encoding="utf-8-sig", errors="ignore").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                _os.environ.setdefault(k.strip(), v.strip())
+        return
+    for p in (ROOT / ".env", PROJ / "ai-research-agent" / ".env"):
+        if p.exists():
+            load_dotenv(p, override=False)
+
+
+_load_env()
+
 results: list[tuple[str, str, str]] = []   # (状态, 项目, 说明)
 
 
@@ -178,27 +201,29 @@ def main():
         rec("WARN", "计划任务查询", str(e))
 
     # ---------------- 汇总 ----------------
+    # 注意：NEED 是"需要 Key"的标记。已配好 Key 时它会变成 OK，
+    # 所以结论不能只看 NEED，要实际判断 has_key()。
     print("\n" + "=" * 66)
     counts: dict[str, int] = {}
     for s, _, _ in results:
         counts[s] = counts.get(s, 0) + 1
     print("  汇总: " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())))
     fails = counts.get("FAIL", 0)
-    need = counts.get("NEED", 0)
     print("=" * 66)
 
     if fails:
         print(f"  [!] {fails} 项失败，先修这些再看别的。")
-    elif need:
-        print("  [结论] 除了 LLM 调用，其他全部就绪。你只需要一个 API Key 就能开跑。")
-        print("  申请（选一个）：")
-        print("    DeepSeek   https://platform.deepseek.com/api_keys      便宜，推荐")
-        print("    智谱 GLM   https://open.bigmodel.cn/                   glm-4-flash 免费额度")
-        print("    阿里通义   https://bailian.console.aliyun.com/          新用户免费额度")
-        print("  Key 到手后：把 .env.example 改名 .env 并填入，或跑：")
-        print('    [Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY","sk-xxx","User")')
+    elif has_key():
+        print("  [结论] 全部就绪 —— 含模型调用。可以直接开跑 Day 1。")
+        print('     python "项目\\ai-research-agent\\hello_llm.py"')
     else:
-        print("  [结论] 全部就绪。开跑。")
+        print("  [结论] 除了 LLM 调用，其他全部就绪。你只需要配一个模型来源。")
+        print("  三条路选一条：")
+        print("    A 云端(推荐) DeepSeek  https://platform.deepseek.com/api_keys")
+        print("    B 免费额度   智谱 GLM  https://open.bigmodel.cn/  (glm-4-flash 免费)")
+        print("                  阿里通义  https://bailian.console.aliyun.com/")
+        print("    C 本地模型   需较强硬件，本机为 Intel 核显，不推荐")
+        print(f"  最快的方式：把 Key 填进 {ROOT / '.env'} 后重跑本脚本。")
     return 0 if not fails else 1
 
 
