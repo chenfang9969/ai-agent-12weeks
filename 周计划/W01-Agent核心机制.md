@@ -105,7 +105,29 @@ python D:\DeepSeekHarness\12周计划\项目\ai-research-agent\main.py "分析�
 3. 补 `docs/agent-flow.md`（Agent 流程图，Mermaid）
 4. 21:00 填 `周复盘/W01-复盘.md`
 
-**今日验收**：`git log` 有第一条提交，README 能让陌生人 10 分钟跑起来。
+> **Git 仓库我已经替你初始化好了**（这就是 Day 6 的前半件事）：
+> ```powershell
+> cd D:\DeepSeekHarness\12周计划
+> git log --oneline            # 应看到 2e7677f W01: AI商业研究助手 v0.1 + 12周作战体系
+> git ls-files | Measure-Object -Line   # 43 个文件已入库
+> ```
+> `.gitignore` 已排除 `__pycache__` / `.env` / `output/产物` / `index.json`，
+> 并确认过**没有任何密钥或产物被提交**。`.gitattributes` 统一了行尾，`git status` 保持干净。
+
+**你今天要做的只剩"推上 GitHub"这一步：**
+```powershell
+# 1) 在 https://github.com/new 建一个**空**仓库（不要勾 README/gitignore）
+# 2) 关联并推送（把 URL 换成你自己的）
+git remote add origin https://github.com/<你的用户名>/ai-agent-12weeks.git
+git branch -M main
+git push -u origin main
+# 3) 认证方式：GitHub 已不支持密码，用 Personal Access Token
+#    生成: https://github.com/settings/tokens  (勾 repo 权限)
+```
+> 推上去之后，你就有了计划要求的第一个资产：**GitHub 项目**。
+> 仓库名建议 `ai-agent-12weeks` —— 面试或见客户时可直接给链接。
+
+**今日验收**：`git log` 有第一条提交，README 能让陌生人 10 分钟跑起来，GitHub 上能看到仓库。
 
 ---
 
