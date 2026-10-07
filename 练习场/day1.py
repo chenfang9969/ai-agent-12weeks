@@ -23,6 +23,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 def celsius_to_fahrenheit(c: float) -> float:
     # TODO: 请在这里写（就一行 return）
+    return c*9/5+32
     pass
 
 
@@ -33,6 +34,8 @@ def celsius_to_fahrenheit(c: float) -> float:
 # ---------------------------------------------------------------------------
 def count_chars(text: str) -> int:
     # TODO: 请在这里写
+    text = text.replace(" ", "")
+    return len(text)
     pass
 
 
@@ -43,6 +46,11 @@ def count_chars(text: str) -> int:
 # ---------------------------------------------------------------------------
 def sum_positive(nums: list[int]) -> int:
     # TODO: 请在这里写
+    sum=0
+    for i in nums:
+        if i>=0:
+            sum+=i
+    return sum
     pass
 
 
@@ -53,6 +61,7 @@ def sum_positive(nums: list[int]) -> int:
 # ---------------------------------------------------------------------------
 def greet(name: str) -> str:
     # TODO: 请在这里写
+    return f"你好，我是{name}，很高兴认识你。"
     pass
 
 

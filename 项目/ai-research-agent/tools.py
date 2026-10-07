@@ -253,6 +253,11 @@ def write_note(title: str, content: str, out_dir: str | None = None) -> dict:
     return {"ok": True, "path": path, "chars": len(str(content))}
 
 
+
+def time_date()->dict:
+    from datetime import datetime
+    return {"ok": True, "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
 # --------------------------------------------------------------------------
 # 给 LLM 看的"说明书" —— 工具描述的质量直接决定 Agent 的成败
 # --------------------------------------------------------------------------
@@ -275,9 +280,14 @@ TOOL_SPECS = [
         "description": "把阶段性结论写到本地 markdown 文件，防止长任务上下文丢失。",
         "parameters": {"title": "文件名，简短", "content": "markdown 正文"},
     },
+    {
+        "name":"time_date",
+        "description":"获取现在的时间来对相关信息获取最新的信息",
+        "parameters":{"time":"时间"}
+    }
 ]
 
-REGISTRY = {"web_search": web_search, "web_fetch": web_fetch, "write_note": write_note}
+REGISTRY = {"web_search": web_search, "web_fetch": web_fetch, "write_note": write_note,"time_date":time_date}
 
 
 def execute(name: str, input_: dict) -> dict:
@@ -306,9 +316,6 @@ def as_prompt() -> str:
         lines.append("")
     return "\n".join(lines)
 
-def time_data()->dict:
-    from datetime import datetime
-    return {"ok": True, "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 
 if __name__ == "__main__":
