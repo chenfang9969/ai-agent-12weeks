@@ -294,23 +294,24 @@ def do_checkin():
     today = date.today()
     p = DAILY / f"{today:%Y-%m-%d}.txt"
     wi = week_index(today)
-    code, title, _ = WEEKS[wi - 1]
+    code, title, deliverable = WEEKS[wi - 1]
     wk_start = START + timedelta(days=(wi - 1) * 7)
     day_no = (today - wk_start).days + 1
+    today_task = S.task(wi, day_no)
 
     if p.exists():
         print(f"[已存在] {p}")
-        n = len(p.read_text(encoding="utf-8"))
-        print(f"   当前 {n} 字。把它填完整再回来。")
+        print(f"   今日任务: {today_task}")
     else:
         BLOCK = "===== 你的答案 =====\n\n===== 结束 =====\n"
         p.write_text(
             f"日期：{today:%Y-%m-%d}（星期{'一二三四五六日'[today.weekday()]}）· "
             f"{code} Day {day_no}\n"
-            f"当天任务卡：{title}（见 12周总任务卡）\n"
+            f"今日任务：{today_task}\n"
+            f"本周交付：{deliverable}\n"
             "实际投入技术时间：____ 分钟\n\n"
             "规则：把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。\n"
-            "      写在标记外的不算（我也检测不到）。\n\n"
+            "      写在标记外的不算（检测不到）。\n\n"
             "--------------------------------------------------\n"
             "【1】今天理解了什么？\n" + BLOCK + "\n"
             "【2】今天解决了什么问题？\n" + BLOCK + "\n"
@@ -323,13 +324,13 @@ def do_checkin():
             encoding="utf-8",
         )
         print(f"[新建] {p}")
+        print(f"   今日任务: {today_task}")
         print("   把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。")
-        print("   写完跑一次:  python progress.py --check   （会告诉你答了几题）")
 
     # 打卡后给出真实进度：答了几题，以及连续记录天数
     answered = sum(1 for _, c in reflect_answers(p) if c >= ANSWER_MIN_CHARS)
-    print(f"\n   反思题进度: {answered}/4 题已作答"
-          + ("   全部完成，很好。" if answered == 4 else "   把答案写在 ===== 你的答案 ===== 与 ===== 结束 ===== 之间。"))
+    print(f"   反思题进度: {answered}/4 题已作答"
+          + ("   全部完成，很好。" if answered == 4 else ""))
 
     logs = {q.stem for q in DAILY.glob("*.txt")}
     streak = 0

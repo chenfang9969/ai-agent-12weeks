@@ -306,6 +306,10 @@ def as_prompt() -> str:
         lines.append("")
     return "\n".join(lines)
 
+def time_data()->dict:
+    from datetime import datetime
+    return {"ok": True, "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
 
 if __name__ == "__main__":
     print("=" * 56)

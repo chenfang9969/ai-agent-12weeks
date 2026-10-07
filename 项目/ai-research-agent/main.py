@@ -24,7 +24,7 @@ from llm import LLMError  # noqa: E402
 def main():
     ap = argparse.ArgumentParser(description="AI 商业研究助手 v0.1")
     ap.add_argument("topic", nargs="?", default="分析某公司AI战略", help="研究主题")
-    ap.add_argument("--steps", type=int, default=10, help="最大循环步数（试试改成 2 看效果）")
+    ap.add_argument("--steps", type=int, default=10, help="2")
     ap.add_argument("--temp", type=float, default=0.3)
     ap.add_argument("--quiet", action="store_true", help="不打印过程")
     args = ap.parse_args()
