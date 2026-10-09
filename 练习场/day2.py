@@ -33,6 +33,7 @@ except Exception:
 #    返回值格式必须和别的工具一致：{"ok": True, ...}
 def word_count(text: str) -> dict:
     # TODO: 请在这里写
+    return {"ok":True,"count":len(text.split())}
     pass
 
 
@@ -42,6 +43,7 @@ def word_count(text: str) -> dict:
 #    提示：可以分几步做；也可以只保留需要的字符
 def make_slug(title: str) -> dict:
     # TODO: 请在这里写
+    return {"ok":True,"slug":title.lower().replace(" ", "-")}
     pass
 
 
@@ -57,7 +59,17 @@ TOOL_SPECS = [
     #     "name": "工具名，必须和 REGISTRY 里的键完全一致",
     #     "description": "这工具干什么。什么情况下该用它。",
     #     "parameters": {"参数名": "参数的说明"},
-    # },
+    # }
+    {
+        "name":"word_count",
+        "description":"数一段文字有多少个词（按空格切开数）",
+        "parameters":{"text":"要数词的文字"},
+    },
+    {
+        "name":"make_slug",
+        "description":"把标题转成\"网址安全的短名\"",
+        "parameters":{"title":"标题"},
+    },
 ]
 
 
@@ -68,6 +80,7 @@ TOOL_SPECS = [
 # ===========================================================================
 REGISTRY = {
     # TODO: 把两个工具注册进来，例如 "word_count": word_count,
+    "word_count":word_count,"make_slug":make_slug
 }
 
 

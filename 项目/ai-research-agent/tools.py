@@ -254,7 +254,14 @@ def write_note(title: str, content: str, out_dir: str | None = None) -> dict:
 
 
 
-def time_date()->dict:
+def time_date(**_ignored) -> dict:
+    """返回当前日期时间。
+
+    为什么收 **kwargs：不需要参数的工具，模型偶尔会硬塞一个参数进来
+    （实测传了 {"time": ""}），函数就会 TypeError 报错。
+    多收一个被忽略的参数，工具就"宽容"了 —— 这是工具设计的实用技巧：
+    **宁可多收一个没用的参数，也不要让模型的第一步就撞墙。**
+    """
     from datetime import datetime
     return {"ok": True, "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
