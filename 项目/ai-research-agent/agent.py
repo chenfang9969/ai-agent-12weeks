@@ -49,29 +49,87 @@ SYSTEM = """你是一个"AI 商业研究助手"。你的任务是通过调用工
 """
 
 
+def _iter_json_objects(text: str):
+    """从左到右扫出所有"括号配对完整"的 JSON 对象（跳过字符串内的括号）。
+
+    为什么要自己写而不是用正则：
+        正则 r"\\{.*\\}" 是贪婪的，会把模型吐出的多个 JSON 连同中间的文字
+        一起吞进去，json.loads 必然失败。
+    实测踩到的坑（2026-10-10）：模型一次输出
+        {"thought":..., "action":{...}}
+        <system>【工具观察】{"ok":true, ...}
+    贪婪正则把两段连成一坨 -> 解析失败 -> 整轮被当成"最终答案" ->
+    工具一次都没调用，循环提前结束。
+    """
+    depth = 0
+    start = -1
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start >= 0:
+                    yield text[start:i + 1]
+                    start = -1
+
+
 def parse_action(text: str) -> dict:
-    """把 LLM 输出解析成结构化动作。容错：去代码块、截最外层花括号。"""
+    """把 LLM 输出解析成结构化动作。
+
+    顺序：
+      1. 去掉 markdown 代码块
+      2. 整段直接 json.loads（最理想）
+      3. 否则按括号配对找出所有 JSON 对象，取**第一个**含
+         thought/action/final 字段的
+      4. 都不行才退化：把原文当最终答案（避免整轮白跑）
+    """
     if not text:
         return {"thought": "空输出", "action": None, "final": None}
     t = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
-    obj = None
+
+    candidates: list[dict] = []
     try:
         obj = json.loads(t)
+        if isinstance(obj, dict):
+            candidates.append(obj)
     except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", t, flags=re.S)
-        if m:
+        pass
+
+    if not candidates:
+        for frag in _iter_json_objects(t):
             try:
-                obj = json.loads(m.group(0))
+                o = json.loads(frag)
             except json.JSONDecodeError:
-                obj = None
-    if not isinstance(obj, dict):
-        # 模型没按格式来：把原文当最终答案，避免整轮白跑
-        return {"thought": "(未按 JSON 格式输出)", "action": None, "final": t}
-    return {
-        "thought": obj.get("thought", ""),
-        "action": obj.get("action"),
-        "final": obj.get("final"),
-    }
+                continue
+            if isinstance(o, dict) and ({"thought", "action", "final"} & set(o)):
+                candidates.append(o)
+
+    for obj in candidates:
+        # 优先取"有 action"的（说明它要干活），其次才接受 final
+        if obj.get("action"):
+            return {"thought": obj.get("thought", ""), "action": obj["action"],
+                    "final": obj.get("final")}
+    for obj in candidates:
+        if obj.get("final"):
+            return {"thought": obj.get("thought", ""), "action": None, "final": obj["final"]}
+
+    # 模型没按格式来：把原文当最终答案，避免整轮白跑
+    return {"thought": "(未按 JSON 格式输出)", "action": None, "final": t}
 
 
 class ResearchAgent:
@@ -97,6 +155,39 @@ class ResearchAgent:
                          "completion_tokens": r.completion_tokens})
         return r.text
 
+    def _think_json(self, max_repair: int = 2) -> tuple[str, dict]:
+        """要一轮 JSON；如果模型没按格式来，就让它重说一遍。
+
+        为什么需要"重说"这一步（2026-10-10 实测）：
+            模型偶尔会一次性吐出一大段东西：先是 JSON，接着又自己模仿
+            <system>【工具观察】... 的格式编一段假的工具返回。
+            解析失败后旧代码直接把整段当"最终答案"，导致**工具一次都没调用**
+            就结束了 —— 输出的是凭记忆编的报告，而且里面还有假的时间。
+
+        修法：解析失败时不放弃，而是告诉它"格式不对，只回一个 JSON"，
+        最多重试 max_repair 次。这是真实 Agent 必须有的鲁棒性。
+        """
+        raw = self._think()
+        for attempt in range(max_repair + 1):
+            parsed = parse_action(raw)
+            ok = bool(parsed["action"]) or bool(parsed["final"])
+            if ok:
+                return raw, parsed
+            if attempt >= max_repair:
+                break
+            self._say(f"  [!] 输出格式不符（第 {attempt + 1} 次），要求它重说一遍 ...")
+            self.messages.append({"role": "assistant", "content": raw[:2000]})
+            self.messages.append({
+                "role": "user",
+                "content": ("你上一条回复格式不对，无法解析。请**只**输出一个 JSON 对象，"
+                            "不要输出任何解释、不要自己编造工具返回结果"
+                            "（工具结果由系统提供，你不需要也不会写 <system> 标签）。\n"
+                            '要调用工具: {"thought": "...", "action": {"tool": "工具名", "input": {...}}}\n'
+                            '要收尾: {"thought": "...", "final": "报告全文"}'),
+            })
+            raw = self._think()
+        return raw, parse_action(raw)
+
     def research(self, topic: str) -> str:
         self.messages = [
             {"role": "system",
@@ -111,8 +202,7 @@ class ResearchAgent:
         report = "(未能生成报告)"
         for step in range(1, self.max_steps + 1):
             self._say(f"\n[Step {step}] 思考中 ...")
-            raw = self._think()
-            parsed = parse_action(raw)
+            raw, parsed = self._think_json()
 
             if parsed["thought"]:
                 self._say(f"  Thought : {parsed['thought'][:200]}")

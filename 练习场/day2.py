@@ -43,7 +43,7 @@ def word_count(text: str) -> dict:
 #    提示：可以分几步做；也可以只保留需要的字符
 def make_slug(title: str) -> dict:
     # TODO: 请在这里写
-    return {"ok":True,"slug":title.lower().replace(" ", "-")}
+    return {"ok":True,"slug":title.lower().strip().replace(" ", "-")}
     pass
 
 
