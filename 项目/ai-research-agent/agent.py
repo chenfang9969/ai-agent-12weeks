@@ -200,6 +200,9 @@ class ResearchAgent:
         self._say("=" * 64)
 
         report = "(未能生成报告)"
+        tool_calls = 0          # 真正执行过的工具次数
+        MIN_RESEARCH = 2        # 至少调研这么多次，才允许它交报告
+
         for step in range(1, self.max_steps + 1):
             self._say(f"\n[Step {step}] 思考中 ...")
             raw, parsed = self._think_json()
@@ -207,8 +210,24 @@ class ResearchAgent:
             if parsed["thought"]:
                 self._say(f"  Thought : {parsed['thought'][:200]}")
 
-            # 终止条件：模型认为资料够了
+            # ---- 终止条件：模型认为资料够了 ----
             if parsed["final"] and not parsed["action"]:
+                # ★ 硬约束：一次调研都没做就想交报告 -> 驳回。
+                #   为什么必须用代码拦，而不是靠提示词求它：
+                #   实测(2026-10-08~10-10) 提示词里写了"至少先做 2 次 web_search"，
+                #   模型照样 7 次直接凭记忆编报告（输入 tokens 只有 507，
+                #   说明它连一次工具观察都没收到）。提示词是请求，代码才是约束。
+                if tool_calls < MIN_RESEARCH and step <= self.max_steps - 1:
+                    self._say(f"  [!] 驳回：还没调研就交报告（已调研 {tool_calls}/{MIN_RESEARCH} 次）")
+                    self.messages.append({"role": "assistant", "content": raw[:1500]})
+                    self.messages.append({
+                        "role": "user",
+                        "content": (f"驳回。你到现在只调研了 {tool_calls} 次，不足以支撑任何结论。\n"
+                                    f"**禁止现在输出报告**。你必须先调用工具收集资料"
+                                    f"（至少再用 web_search 搜 {MIN_RESEARCH - tool_calls} 次）。\n"
+                                    '只输出这个格式: {"thought": "...", "action": {"tool": "web_search", "input": {"query": "..."}}}'),
+                    })
+                    continue
                 self._say("  -> 决策: 输出最终报告")
                 report = parsed["final"]
                 break
@@ -222,6 +241,7 @@ class ResearchAgent:
 
             self._say(f"  Action  : {name}({json.dumps(input_, ensure_ascii=False)})")
             result = T.execute(name, input_)
+            tool_calls += 1
 
             # Observation 压缩：喂回上下文前裁剪，控制 token 成本
             brief = json.dumps(result, ensure_ascii=False)
