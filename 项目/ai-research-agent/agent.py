@@ -201,7 +201,7 @@ class ResearchAgent:
 
         report = "(未能生成报告)"
         tool_calls = 0          # 真正执行过的工具次数
-        MIN_RESEARCH = 2        # 至少调研这么多次，才允许它交报告
+        MIN_RESEARCH = 3        # 至少调研这么多次，才允许它交报告
 
         for step in range(1, self.max_steps + 1):
             self._say(f"\n[Step {step}] 思考中 ...")
