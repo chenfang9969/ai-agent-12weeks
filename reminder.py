@@ -44,46 +44,36 @@ def overdue_days(today: date) -> list[str]:
 
 
 def build_message(today: date) -> tuple[str, str, str]:
-    """返回 (控制台全文, 通知标题, 通知正文)。"""
+    """返回 (控制台全文, 通知标题, 通知正文)。
+
+    2026-10-11 改：不再催"30 分钟记录"，也不再算欠账。
+    每日记录是使用者自己的本子，提醒器只负责告诉他"今天该做什么"。
+    """
     wi = S.week_index(today)
     code, title, deliverable = S.WEEKS[wi - 1]
     day_no = (today - S.week_start(wi)).days + 1
     task = S.task(wi, day_no)
 
-    missing = overdue_days(today)
-    if not missing:
-        warn = "记录无欠账，保持住。"
-    elif len(missing) <= 2:
-        warn = f"欠 {len(missing)} 天记录：{', '.join(missing)}"
-    else:
-        warn = f"!! 欠 {len(missing)} 天记录（{', '.join(missing)}）—— 今天必须补"
-
-    tf = DAILY / f"{today:%Y-%m-%d}.txt"
-    words = len(tf.read_text(encoding="utf-8")) if tf.exists() else 0
-
     dash = "=" * 58
     lines = [
         "",
         dash,
-        f"  12周计划 · 每日提醒    {today:%Y-%m-%d} 星期{WEEKDAYS[today.weekday()]}",
+        f"  12周计划 · 今日提醒    {today:%Y-%m-%d} 星期{WEEKDAYS[today.weekday()]}",
         dash,
         f"  当前: 第 {wi} 周 {code} · {title}   (第 {day_no}/7 天)",
         "",
         f"  今日任务: {task}",
         "",
         "  [ ] 黄金 60 分钟技术块",
-        "  [ ] 30 分钟记录：理解了什么 / 解决了什么 / 商业价值 / 客户场景",
-        "  [ ] 5 分钟：写下明天第一件事",
         "",
         f"  本周交付: {deliverable}",
-        f"  今日记录: {words} 字    {warn}",
         "",
-        f'  打卡:   python "{ROOT}\\progress.py" --checkin',
-        f'  日历:   python "{ROOT}\\schedule.py" --week {wi}',
+        f'  任务卡: python "{ROOT}\\progress.py" --week',
+        f'  记录本: python "{ROOT}\\today.py"   （你自己的本子，写不写随意）',
         dash,
     ]
     console = "\n".join(lines)
-    return console, f"12周计划 · 第{wi}周第{day_no}天", f"{task}\n{warn}"
+    return console, f"12周计划 · 第{wi}周第{day_no}天", task
 
 
 def popup(title: str, message: str) -> bool:
