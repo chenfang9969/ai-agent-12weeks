@@ -8,8 +8,8 @@
   "assets": {
     "W01": {
       "deliverable": "AI商业研究助手 v0.1 能跑 + README + Agent 流程图",
-      "done": false,
-      "proof": ""
+      "done": true,
+      "proof": "https://github.com/chenfang9969/ai-agent-12weeks"
     },
     "W02": {
       "deliverable": "Research Agent v1.0（含人工审核节点）+ 状态图",
