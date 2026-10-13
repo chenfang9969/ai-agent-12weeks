@@ -22,4 +22,6 @@ venv/
 .idea/
 Thumbs.db
 desktop.ini
-~$*          # 只忽略 Office 临时锁文件（正常的 .docx/.xlsx 文档要保留）
+
+# Office 临时锁文件（文件名以 ~$ 开头，例如 ~$报告.docx）
+~$*
