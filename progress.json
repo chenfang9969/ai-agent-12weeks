@@ -13,8 +13,8 @@
     },
     "W02": {
       "deliverable": "Research Agent v1.0（含人工审核节点）+ 状态图",
-      "done": false,
-      "proof": ""
+      "done": true,
+      "proof": "项目/langgraph-mini/translate_graph.py + docs/translate-flow.md"
     },
     "W03": {
       "deliverable": "知识库 Demo + 20题评测(命中率/拒答率) + 企业名单≥10家",
