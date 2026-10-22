@@ -21,12 +21,15 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "ai-research-agent"))
 
 from graph import END, StateGraph, draw_mermaid  # noqa: E402
+sys.path.insert(0, str(HERE.parent / "ai-research-agent"))
+from llm import LLMError, chat, pick_provider
 
 MAX_ROUND = 3          # 最多翻译几稿（含第 1 稿）
 OUT_DIR = HERE / "output"
@@ -47,17 +50,25 @@ def node_translate(state: dict) -> dict:
     返回示例：{"translation": "......", "round": 2, "log": [...]}
     """
     # TODO: 请在这里实现
-    round = state["round"] + 1
+    n=state["round"]+1
+    source=state["source_text"]
+    feedback=state.get("review_feedback", "")
     if state["mock"]:
-        translation = f"[mock 第{round}稿] {state['source_text']}"
+        translation = f"[mock 第{n}稿] {state['source_text']}"
     else:
-        translation = f"[真实 第{round}稿] ..."
-    review_feedback = state.get("review_feedback", "")
-    translation = translation + review_feedback
+        user_msg = f"原文（中文）：\n{state['source_text']}\n"
+        if feedback:
+            user_msg += f"\n上一轮审核意见：{feedback}\n请据此修改译文。"
+        resp = chat(pick_provider(), [
+            {"role": "system", "content": "你是专业翻译。把用户给的中文翻成英文，只输出译文本身，不要解释。"},
+            {"role": "user", "content": user_msg},
+        ], temperature=0.3)
+        text = resp.text.strip()
+    
     return {
-        "translation":translation,
-        "round":round,
-        "log": state.get("log", []) + [f"[翻译第{round}稿] {translation}"],
+        "translation":text,
+        "round":n,
+        "log": state.get("log", []) + [f"translate: 第{n}稿" + ("（重译）" if feedback else "")],
         "review_feedback":"",
     }
 
