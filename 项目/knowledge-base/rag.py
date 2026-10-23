@@ -185,7 +185,17 @@ def answer(question: str, hits: list[dict], use_llm: bool = True) -> str:
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
-def cmd_build():
+def cmd_build(max_chars: int = 400, overlap: int = 80, min_block: int = 120):
+    """建索引。三个参数就是 W03 要做的对照实验：
+        max_chars  每片最长多少字
+        overlap    相邻片重叠多少字（防止一句话被切断）
+        min_block  小于这个字数的碎片会被合并进上一片（防止标题独占一片）
+
+    跑法：
+        python rag.py --build                          # 默认 400/80/120
+        python rag.py --build --max-chars 200          # 实验 A
+        python rag.py --build --overlap 0              # 实验 B
+    """
     if not DATA.exists():
         print(f"[!] 没有资料目录: {DATA}")
         print("    W03 Day1 任务：在 data/ 下建 4 类资料（产品资料/员工手册/培训文档/销售资料）")
@@ -196,12 +206,14 @@ def cmd_build():
         return 1
     chunks: list[dict] = []
     for f in files:
-        chunks += split_markdown(f.read_text(encoding="utf-8", errors="ignore"), f.name)
+        chunks += split_markdown(f.read_text(encoding="utf-8", errors="ignore"), f.name,
+                                 max_chars=max_chars, overlap=overlap,
+                                 min_block_chars=min_block)
     idx = build_index(chunks)
     INDEX.write_text(json.dumps(idx, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[OK] 索引完成：{len(files)} 个文档 → {len(chunks)} 个切片 → {INDEX}")
+    print(f"[OK] 索引完成：{len(files)} 个文档 → {len(chunks)} 个切片")
+    print(f"     参数: max_chars={max_chars}  overlap={overlap}  min_block={min_block}")
     print(f"     平均每片 {sum(len(c['text']) for c in chunks) // max(len(chunks), 1)} 字")
-    print("\n动手实验（W03 Day2 任务）：改 max_chars/overlap 再建一次，看检索结果怎么变。")
     return 0
 
 
@@ -289,9 +301,13 @@ def main():
     ap.add_argument("--top-k", type=int, default=3)
     ap.add_argument("--min-score", type=float, default=0.25,
                     help="相关度绝对下限，低于此值触发拒答（调它看误答怎么变）")
+    # 以下三个只对 --build 生效，是 W03 的对照实验参数
+    ap.add_argument("--max-chars", type=int, default=400, help="[--build] 每片最长字数")
+    ap.add_argument("--overlap", type=int, default=80, help="[--build] 相邻切片重叠字数")
+    ap.add_argument("--min-block", type=int, default=120, help="[--build] 碎片合并阈值")
     a = ap.parse_args()
     if a.build:
-        return cmd_build()
+        return cmd_build(a.max_chars, a.overlap, a.min_block)
     if a.ask:
         return cmd_ask(a.ask, a.no_llm, a.top_k, a.min_score)
     if a.eval:
