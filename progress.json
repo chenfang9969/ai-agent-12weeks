@@ -18,8 +18,8 @@
     },
     "W03": {
       "deliverable": "知识库 Demo + 20题评测(命中率/拒答率) + 企业名单≥10家",
-      "done": false,
-      "proof": ""
+      "done": true,
+      "proof": "项目/knowledge-base/(rag.py+实验记录.md) + 商业资产/W03-潜在客户调研.md"
     },
     "W04": {
       "deliverable": "私有化部署 + 知识库 + FastAPI 工具接口 + 自研vs Dify对照表",
