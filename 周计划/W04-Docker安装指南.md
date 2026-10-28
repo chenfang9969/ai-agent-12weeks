@@ -164,3 +164,38 @@ docker info --format '{{.DockerRootDir}}'
 | **合计** | **约 15-20 GB** |
 
 **D 盘 79.5 GB 够用。**
+
+---
+
+## 实测记录（2026-10-28 完成）
+
+| 项 | 结果 |
+|---|---|
+| WSL | 3.0.3，内核 6.18.54.1 |
+| Docker | 29.9.2 |
+| 程序位置 | `D:\Docker` |
+| 数据位置 | `D:\DockerData`（1.54 GB）|
+| C 盘 Docker 数据 | 无（没偷占）|
+| `docker run hello-world` | ✅ 成功 |
+
+### 踩的坑（重要）
+
+**1. 代理会拦微软下载**
+`
+wsl --install  →  "服务器返回无效或不可识别的响应" / "无法与服务器建立连接"
+`
+解法：**代理切全局 + 加 `--web-download`（走 GitHub 通道）+ 日本节点**，一次下好。
+
+**2. 不需要装 Ubuntu**
+Docker Desktop 自带 `docker-desktop` WSL 发行版，不用 Ubuntu。省 500 MB 下载。
+
+**3. GUI 配置界面怎么选**
+- ✅ Per-user installation
+- ✅ WSL 2
+- ❌ 不要选 Docker VMM (Beta)
+
+**4. 装完老窗口读不到 docker 命令**
+新开窗口即可；或在当前窗口刷新：
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+```
