@@ -25,3 +25,6 @@ desktop.ini
 
 # Office 临时锁文件（文件名以 ~$ 开头，例如 ~$报告.docx）
 ~$*
+
+# 临时提交信息文件
+_msg.txt
