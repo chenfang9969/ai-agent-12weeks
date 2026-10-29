@@ -97,6 +97,15 @@ def cosine(a: list[float], b: list[float]) -> float:
 # 3. 主流程
 # --------------------------------------------------------------------------
 def main() -> None:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="对比词频检索与向量检索")
+    ap.add_argument("--rerank", action="store_true",
+                    help="在向量召回之后再跑一遍 LLM 精排（需要 DEEPSEEK_API_KEY）")
+    ap.add_argument("--top-n", type=int, default=6,
+                    help="交给 LLM 精排的候选数（默认 6）")
+    args = ap.parse_args()
+
     key = os.environ.get("SILICONFLOW_API_KEY", "").strip()
     if not key:
         raise SystemExit(
@@ -160,6 +169,41 @@ def main() -> None:
             print("\n  ❌ 结论：embedding 没救回来。这说明问题不在检索方式，在别处。")
     print("=" * 78)
     print("\n把上面这段输出发我，我更新对照表。")
+
+    # --- 可选的第三段：LLM 精排 ---
+    if args.rerank:
+        from rerank_test import rerank
+
+        top_n = args.top_n
+        cands = [
+            {**chunks[i], "vec_score": round(sims[i], 4)}
+            for i in order[:top_n]
+        ]
+        print()
+        print("=" * 78)
+        print(f"  LLM 精排（拿向量 top-{top_n} 交给模型打分，keep=3 / 门槛 5 分）")
+        print("=" * 78)
+        try:
+            kept = rerank(QUERY, cands, keep=3, min_score=5)
+        except Exception as e:                      # 没配 LLM Key 也不要崩
+            print(f"\n  [精排失败] {e}")
+            print("  检查 项目/ai-research-agent/.env 里的 DEEPSEEK_API_KEY")
+            return
+
+        if not kept:
+            print("\n  (全部被过滤 —— 等于拒答，宁少勿滥)")
+        for rank, h in enumerate(kept, 1):
+            mark = "★" if "服务期" in h["text"] else " "
+            print(f"\n  {mark} 精排第 {rank} 名 | LLM={h['llm_score']} 分 | 向量 {h['vec_score']:.4f}")
+            print(f"    来源: {h['source']} / {h['title']}")
+            print(f"    内容: {h['text'].replace(chr(10), ' ')[:80]}…")
+
+        if target is not None:
+            kept_ids = [h["id"] for h in kept]
+            ok = chunks[target]["id"] in kept_ids
+            print()
+            print(f"  含答案那段最终: {'✅ 保留（能答了）' if ok else '❌ 被精排扔掉（仍答不出）'}")
+        print("=" * 78)
 
 
 if __name__ == "__main__":
