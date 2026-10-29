@@ -188,6 +188,8 @@ def main() -> None:
         print("=" * 78)
         print(f"  LLM 精排（向量 top-{top_n} → 门槛 {args.rerank_min} 分 → 保留 {args.rerank_keep} 条）")
         print("=" * 78)
+        print(f"  正在逐段让 LLM 打分（{len(cands)} 段串行，约 20-60 秒，别以为卡死了）…",
+              flush=True)
         try:
             kept = rerank(QUERY, cands, keep=args.rerank_keep, min_score=args.rerank_min)
         except Exception as e:                      # 没配 LLM Key 也不要崩
