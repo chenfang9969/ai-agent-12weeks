@@ -104,7 +104,55 @@
 
 ---
 
-## 七、下一步（W04 剩余）
+## 七、Dify 调自研接口（2026-10-29 打通）
 
-- [ ] FastAPI 工具接口（让 Dify 能调你自己的 API）
+**目标**：让 Dify 不只是"查资料"，还能"查实时数据"。
+
+### 做法
+
+1. 用 FastAPI 写一个工具服务 `项目/kb-api/tool_api.py`，跑在本机 `8200` 端口
+   - `GET /api/stock?sku=X1-BASIC` → 库存
+   - `GET /api/order?order_id=...` → 订单状态
+2. Dify 里加一个 **HTTP 请求** 节点，URL 填 `http://host.docker.internal:8200/api/stock?sku=X1-BASIC`
+3. 把 HTTP 节点的返回接到 LLM 的上下文里
+
+### 一个必须知道的坑
+
+Docker 容器默认**出不去**到宿主机（SSRF 防护）。
+
+```
+初期报错：连接被拒绝 / 请求超时
+原因：Dify 的 ssrf_proxy 拦了内网地址
+修复：在 D:\Dify\docker\.env 加
+      SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=host.docker.internal
+      然后 docker compose up -d --force-recreate ssrf_proxy api
+```
+
+### 实测结果
+
+问：「X1 基础版还有库存吗？」
+
+```
+有库存。智能客服机器人 X1 基础版当前现货 42 套。
+来源：产品资料中的实时库存数据（SKU：X1-BASIC）
+```
+
+**42 是 `tool_api.py` 里 `STOCK` 字典的值，不是模型编的。**
+
+### 为什么这一步重要（商业价值）
+
+| 只会查资料 | 会调接口 |
+|---|---|
+| 答"资料里写的是……" | 答"**现在**还有 42 套" |
+| 资料过期就答错 | 实时准确 |
+| 只能做 FAQ 客服 | 能做 **查库存、查订单、查工单** 的业务助手 |
+
+> **这一条就是"知识库"和"业务系统"的分界线。**
+> 客户愿意为"能查实时数据"付的钱，远多于"能搜文档"。
+
+---
+
+## 八、下一步（W04 收尾）
+
+- [x] FastAPI 工具接口（让 Dify 能调你自己的 API）—— **已打通并实测**
 - [ ] 配上 embedding 模型，测「高质量」索引模式能不能救回第 3 题

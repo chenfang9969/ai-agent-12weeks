@@ -23,8 +23,8 @@
     },
     "W04": {
       "deliverable": "私有化部署 + 知识库 + FastAPI 工具接口 + 自研vs Dify对照表",
-      "done": false,
-      "proof": ""
+      "done": true,
+      "proof": "Dify 1.18.0 本地部署 12 容器健康运行（http://localhost）；知识库 4 文档 23 分段，Chatflow 检索问答通过；FastAPI 工具接口 项目/kb-api/tool_api.py 运行于 8200，Dify HTTP 请求节点经 host.docker.internal 调通（问库存答 42 套）；对照表 项目/knowledge-base/自研-vs-Dify-对照表.md"
     },
     "W05": {
       "deliverable": "一个入口端到端跑通 + 60秒录屏 + 架构图",

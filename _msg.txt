@@ -1,0 +1,6 @@
+﻿W04 完成: Dify 本地部署 + 知识库 + FastAPI 工具接口
+
+- FastAPI 工具接口 tool_api.py 跑在 8200，提供 /api/stock 与 /api/order
+- Dify HTTP 请求节点经 host.docker.internal:8200 调通，问库存答出 42 套（非模型编造）
+- 踩坑记录：ssrf_proxy 拦截内网地址，需 SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=host.docker.internal
+- 对照表补充"只会查资料 vs 会调接口"的商业价值对比
