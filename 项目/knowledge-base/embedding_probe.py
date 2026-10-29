@@ -104,6 +104,11 @@ def main() -> None:
                     help="在向量召回之后再跑一遍 LLM 精排（需要 DEEPSEEK_API_KEY）")
     ap.add_argument("--top-n", type=int, default=6,
                     help="交给 LLM 精排的候选数（默认 6）")
+    ap.add_argument("--rerank-min", type=int, default=3,
+                    help="精排的绝对门槛，默认 3。实测 DeepSeek 对'同义但不同词'的段只给 3 分，"
+                         "设 5 会连正确答案一起杀掉")
+    ap.add_argument("--rerank-keep", type=int, default=3,
+                    help="精排后最多保留几条（默认 3）")
     args = ap.parse_args()
 
     key = os.environ.get("SILICONFLOW_API_KEY", "").strip()
@@ -181,17 +186,18 @@ def main() -> None:
         ]
         print()
         print("=" * 78)
-        print(f"  LLM 精排（拿向量 top-{top_n} 交给模型打分，keep=3 / 门槛 5 分）")
+        print(f"  LLM 精排（向量 top-{top_n} → 门槛 {args.rerank_min} 分 → 保留 {args.rerank_keep} 条）")
         print("=" * 78)
         try:
-            kept = rerank(QUERY, cands, keep=3, min_score=5)
+            kept = rerank(QUERY, cands, keep=args.rerank_keep, min_score=args.rerank_min)
         except Exception as e:                      # 没配 LLM Key 也不要崩
             print(f"\n  [精排失败] {e}")
-            print("  检查 项目/ai-research-agent/.env 里的 DEEPSEEK_API_KEY")
+            print("  检查 12周计划/.env 里的 DEEPSEEK_API_KEY，或确认装了 python-dotenv")
             return
 
         if not kept:
             print("\n  (全部被过滤 —— 等于拒答，宁少勿滥)")
+            print(f"  提示：加 --rerank-min 1 或 0 看看是不是门槛把它拦住了")
         for rank, h in enumerate(kept, 1):
             mark = "★" if "服务期" in h["text"] else " "
             print(f"\n  {mark} 精排第 {rank} 名 | LLM={h['llm_score']} 分 | 向量 {h['vec_score']:.4f}")
@@ -201,8 +207,12 @@ def main() -> None:
         if target is not None:
             kept_ids = [h["id"] for h in kept]
             ok = chunks[target]["id"] in kept_ids
+            top1 = kept[0]["id"] == chunks[target]["id"] if kept else False
             print()
             print(f"  含答案那段最终: {'✅ 保留（能答了）' if ok else '❌ 被精排扔掉（仍答不出）'}")
+            if ok:
+                print(f"  并且排在第 {kept_ids.index(chunks[target]['id']) + 1} 名"
+                      f"{'（第 1 名，模型优先看到它）' if top1 else ''}")
         print("=" * 78)
 
 
