@@ -33,6 +33,8 @@ sys.path.insert(0, str(HERE.parent / "ai-research-agent"))
 
 from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 import rag  # noqa: E402  (knowledge-base/rag.py)
@@ -47,6 +49,7 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 
+WEB = HERE / "web"                      # W05 的"一张脸"：无构建的单页聊天窗
 INDEX = None
 QA_LOG: deque = deque(maxlen=500)   # 内存版问答记录。真实交付要落库
 STARTED_AT = time.time()
@@ -201,8 +204,9 @@ def logs(limit: int = 50):
             "note": "refused 高说明资料有缺口，这就是要补资料的地方"}
 
 
-@app.get("/")
-def root():
+@app.get("/api")
+def api_index():
+    """给开发者/客户看的接口清单。网页聊天窗在 / 上。"""
     return {
         "name": "企业知识库 Agent API",
         "version": "0.5.0",
@@ -213,8 +217,27 @@ def root():
             "POST /api/reindex": "重建索引",
             "GET  /api/logs": "问答记录",
             "GET  /docs": "FastAPI 自动生成的接口文档（可以直接演示给客户看）",
+            "GET  /": "网页聊天窗（W05 入口）",
         },
     }
+
+
+# --------------------------------------------------------------------------
+# W05 · 入口层：网页聊天窗
+#   /        → 聊天页（静态 HTML，无构建、无外网依赖）
+#   /web/*   → 页面资源
+#   问答逻辑一行没改：页面只 fetch /api/ask，和后端解耦
+# --------------------------------------------------------------------------
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def home():
+    page = WEB / "index.html"
+    if not page.exists():
+        raise HTTPException(status_code=500, detail="缺少 web/index.html")
+    return FileResponse(page, media_type="text/html; charset=utf-8")
+
+
+if WEB.exists():
+    app.mount("/web", StaticFiles(directory=str(WEB)), name="web")
 
 
 if __name__ == "__main__":
@@ -230,7 +253,7 @@ if __name__ == "__main__":
     print("  企业知识库 Agent API")
     print("=" * 64)
     print(f"  模式: {'LLM 生成' if ok else '检索模式（未配置 API Key，仍可演示）'}")
-    print(f"  地址: http://{a.host}:{a.port}")
-    print(f"  文档: http://{a.host}:{a.port}/docs")
+    print(f"  聊天窗: http://{a.host}:{a.port}/")
+    print(f"  接口文档: http://{a.host}:{a.port}/docs")
     print("=" * 64)
     uvicorn.run(app, host=a.host, port=a.port, log_level="info")
