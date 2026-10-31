@@ -52,6 +52,9 @@ python server.py --host 0.0.0.0       # 允许局域网访问（手机/其他机
 2. **成本可控** —— 内部测试阶段不烧钱
 3. **诚实** —— 接口明确告诉你当前是哪种模式，不假装
 
+还有一层兜底：**Key 欠费/失效时不会给客户看 500**，而是自动降级成检索模式并在答案开头说明
+（2026-10-31 实测：`mode="retrieval"`、HTTP 200、原文片段照返）。
+
 ## 自检 / 回归
 
 ```powershell
@@ -61,6 +64,18 @@ python demo_probe.py --base-url http://127.0.0.1:8200
 ```
 
 录屏前必跑。全绿再录，别赌运气。
+
+## 压测（D6 已做）
+
+```powershell
+python load_test.py --concurrency 3  --rounds 2     # 演示场景
+python load_test.py --concurrency 10 --rounds 1     # 小团队
+python load_test.py --concurrency 20 --rounds 1     # 边界
+python load_test.py --concurrency 20 --rounds 1 --no-llm   # 降级模式
+```
+
+实测（2026-10-31，单进程）：3/10/20 并发 **0 失败**，p95 最高 **2.25s**；边界 422 全对。
+结论与不能承诺的边界见 `docs/压测记录.md`。
 
 ## 入口层怎么写的（W05）
 
@@ -85,5 +100,6 @@ web/app.js       提问 / 渲染 / 来源折叠 / 90s 超时 / 健康检查
 ## 相关文档
 
 - `docs/架构图.md` —— W05 交付物：分层图、降级路径、6 步数据流
+- `docs/压测记录.md` —— W05 交付物：并发/边界/降级实测数据
 - `../../周计划/W05-开工记录.md` —— 本次开工记录、录屏脚本、D4 待决策
 - `../../项目/knowledge-base/自研-vs-Dify-对照表.md` —— 两条技术路线怎么选

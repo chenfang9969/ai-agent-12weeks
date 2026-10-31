@@ -132,15 +132,23 @@ def do_rag(question: str, top_k: int, min_score: float, no_llm: bool) -> dict:
         for h in hits
     ]
 
-    if no_llm or not llm_available():
-        body = "\n\n".join(
+    def retrieval_body() -> str:
+        return "\n\n".join(
             f"【{i + 1}】{h['source']} · {h['title']}\n{h['text']}" for i, h in enumerate(hits)
         )
-        return {"answer": f"（检索模式，未使用模型总结）\n\n{body}",
+
+    if no_llm or not llm_available():
+        return {"answer": f"（检索模式，未使用模型总结）\n\n{retrieval_body()}",
                 "sources": sources, "refused": False, "mode": "retrieval"}
 
-    return {"answer": rag.answer(question, hits, use_llm=True),
-            "sources": sources, "refused": False, "mode": "llm"}
+    try:
+        return {"answer": rag.answer(question, hits, use_llm=True),
+                "sources": sources, "refused": False, "mode": "llm"}
+    except Exception as e:
+        # ★ 现场救命：Key 欠费/失效/超时，不许给客户看 500。
+        #   退回到"只给原文片段"，模式和文案都诚实说明发生了什么。
+        return {"answer": f"（模型暂时不可用，已降级为检索模式：{type(e).__name__}）\n\n{retrieval_body()}",
+                "sources": sources, "refused": False, "mode": "retrieval"}
 
 
 # --------------------------------------------------------------------------
